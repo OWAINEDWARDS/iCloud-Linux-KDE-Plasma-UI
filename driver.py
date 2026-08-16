@@ -88,15 +88,22 @@ def sha256_file(path):
 def row_to_dict(row):
     return dict(row) if row is not None else None
 
-
 class NamedFileStream:
     def __init__(self, handle, name):
         self._handle = handle
         self.name = name
 
+    def read(self, *args):
+        return self._handle.read(*args)
+
+    def tell(self):
+        return self._handle.tell()
+
+    def seek(self, *args):
+        return self._handle.seek(*args)
+
     def __getattr__(self, attr):
         return getattr(self._handle, attr)
-
 
 class SyncState:
     def __init__(self, db_path):
