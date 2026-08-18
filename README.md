@@ -1,3 +1,19 @@
+# To-Do List
+
+* [x] Basic GUI Tray integration with KDE Plasma.
+* [ ] After meta-data crawl - halt - gui select fodler - update config file - sync only based on selection from root folder.
+* [ ] Documentation of code. 
+* [ ] Update Read-me for UI integration with kde.
+* [ ] Add Ui Image to read-me
+
+# PLanned UI Features
+
+* [ ] Recursive folder selection. 
+
+
+## Notes
+Integrated iCloudLinux with KDE plasma using kde plasmoids. 
+
 # icloud-linux
 
 Mount iCloud Drive on Linux as a fast local-first FUSE filesystem with persistent caching, selective hydration, and on-demand sync.

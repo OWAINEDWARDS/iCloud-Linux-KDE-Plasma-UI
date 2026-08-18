@@ -1,0 +1,10 @@
+Python backend starts
+        ↓
+claims D-Bus name
+org.iCloudLinux
+        ↓
+Plasma System Tray notices
+        ↓
+loads org.icloudlinux.plasma
+        ↓
+cloud icon appears

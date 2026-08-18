@@ -9,6 +9,11 @@ SERVICE_DIR="$HOME/.config/systemd/user"
 CONFIG_FILE="$CONFIG_DIR/config.yaml"
 ENV_FILE="$CONFIG_DIR/icloud.env"
 SERVICE_FILE="$SERVICE_DIR/icloud.service"
+UI_SERVICE_NAME="icloud-linux-ui.service"
+UI_SERVICE_FILE="$SERVICE_DIR/$UI_SERVICE_NAME"
+PLASMOID_ID="org.icloudlinux.plasma"
+PLASMOID_DIR="$HOME/.local/share/plasma/plasmoids/$PLASMOID_ID"
+QML_MODULE_DIR="/usr/lib/qt6/qml/org/icloudlinux/backend"
 MOUNT_DIR_DEFAULT="$HOME/iCloud"
 
 need_cmd() { command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1"; exit 1; }; }
@@ -37,10 +42,16 @@ ensure_dirs() {
 
 ensure_venv() {
   if [[ ! -x "$REPO_DIR/.venv/bin/python" ]]; then
-    echo "Creating virtualenv..."
+    echo "Creating Python virtual environment..."
     python3 -m venv "$REPO_DIR/.venv"
+    echo "Virtual environment created."
   fi
-  "$REPO_DIR/.venv/bin/pip" install -q -r "$REPO_DIR/requirements.txt"
+
+  echo "Installing/updating Python requirements..."
+
+  "$REPO_DIR/.venv/bin/python" -m pip install --progress-bar on -r "$REPO_DIR/requirements.txt"
+
+  echo "Python requirements ready."
 }
 
 create_config_if_missing() {
@@ -77,6 +88,31 @@ TimeoutStopSec=10
 KillMode=control-group
 ExecStopPost=-/usr/bin/fusermount -uz $mount_dir_q
 Environment=ICLOUD_LOG_PATH=%h/.local/state/icloud-linux/icloud.log
+
+[Install]
+WantedBy=default.target
+EOF
+}
+
+write_ui_service() {
+  local python_bin="$REPO_DIR/.venv/bin/python"
+  local python_bin_q
+
+  python_bin_q="$(systemd_quote_arg "$python_bin")"
+
+  cat > "$UI_SERVICE_FILE" <<EOF
+[Unit]
+Description=iCloud Linux Plasma backend
+
+[Service]
+Type=simple
+WorkingDirectory=$REPO_DIR
+ExecStart=$python_bin_q -m ui_backend.backend_service
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=5
+KillMode=control-group
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=default.target
@@ -225,6 +261,55 @@ cmd_clear_cache() {
   fi
 }
 
+cmd_install_ui() {
+  need_cmd cmake
+  need_cmd kpackagetool6
+  need_cmd sudo
+
+  ensure_dirs
+  ensure_venv
+
+  echo "Building Plasma backend plugin..."
+
+  cmake -S "$REPO_DIR" -B "$REPO_DIR/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+
+  cmake --build "$REPO_DIR/build"
+
+  echo "Installing QML backend module..."
+
+  sudo cmake --install "$REPO_DIR/build"
+
+  echo "Installing Plasma applet..."
+
+  if [[ -d "$PLASMOID_DIR" ]]; then
+    kpackagetool6 --type Plasma/Applet --upgrade "$REPO_DIR/plasmoid"
+  else
+    kpackagetool6 --type Plasma/Applet --install "$REPO_DIR/plasmoid"
+  fi
+
+  echo "Installing backend user service..."
+
+  write_ui_service
+
+  systemctl --user daemon-reload
+  systemctl --user enable "$UI_SERVICE_NAME"
+  systemctl --user restart "$UI_SERVICE_NAME"
+
+  echo
+  echo "Plasma integration installed."
+  echo "- Backend service: $UI_SERVICE_NAME"
+  echo "- Plasmoid:        $PLASMOID_ID"
+  echo "- QML module:      $QML_MODULE_DIR"
+}
+
+cmd_ui_status() {
+  systemctl --user --no-pager status "$UI_SERVICE_NAME"
+}
+
+cmd_ui_logs() {
+  journalctl --user -u "$UI_SERVICE_NAME" -f
+}
+
 cmd_uninstall() {
   local purge="${1:-}"
   systemctl --user stop icloud.service >/dev/null 2>&1 || true
@@ -266,6 +351,9 @@ cmd_doctor() {
 cmd_quickstart() {
   local mount_dir="${1:-$MOUNT_DIR_DEFAULT}"
   cmd_init "$mount_dir"
+  echo
+  echo "Installing KDE Plasma integration..."
+  cmd_install_ui
   echo
   echo "Now configure credentials:"
   cmd_configure
@@ -324,6 +412,9 @@ main() {
     refresh) cmd_refresh ;;
     status) cmd_status ;;
     logs) cmd_logs ;;
+    install-ui) cmd_install_ui ;;
+    ui-status) cmd_ui_status ;;
+    ui-logs) cmd_ui_logs ;;
     doctor) cmd_doctor ;;
     uninstall) cmd_uninstall "$@" ;;
     ""|-h|--help|help) usage ;;

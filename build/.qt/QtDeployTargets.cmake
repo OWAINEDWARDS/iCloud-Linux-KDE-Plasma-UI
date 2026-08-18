@@ -1,0 +1,2 @@
+set(__QT_DEPLOY_TARGET_icloudlinuxplugin_FILE /home/gngrora/Documents/Dev/icloud-linux-trayUI/build/libicloudlinuxplugin.so)
+set(__QT_DEPLOY_TARGET_icloudlinuxplugin_TYPE SHARED_LIBRARY)

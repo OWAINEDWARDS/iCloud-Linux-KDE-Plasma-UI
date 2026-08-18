@@ -5,9 +5,12 @@ from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from pathlib import Path
-from ui_utils import update_status
 from service_manager import ServiceManager
 from sync_manager import SyncManager
+from PySide6.QtGui import QAction, QIcon
+
+from ui_utils import update_status
+from tray_main_panel import TrayMainPanel
 
 
 @dataclass
@@ -17,6 +20,7 @@ class TrayActions:
     restart: QAction
     stop: QAction
     status: QAction
+    current: QAction
 
 
 class TrayApp:
@@ -30,7 +34,8 @@ class TrayApp:
             sync = self.sync_action,
             restart = self.restart_action,
             stop = self.stop_action,
-            status = self.status_action
+            status = self.status_action,
+            current = self.current_file_action
         )
 
         self.set_action_trigger_connections()
@@ -57,15 +62,22 @@ class TrayApp:
         self.tray.setToolTip("iCloud Linux")
 
         self.menu = QMenu()
+        #Main Panel
+        self.app_tray_main_panel = TrayMainPanel()
 
         self.status_action = QAction("Status: Checking...")
         self.status_action.setEnabled(False) # set not click-able
+
+        self.current_file_action = QAction("Current: —")
+        self.current_file_action.setEnabled(False)
 
         self.start_action = QAction("Start Service")
         self.stop_action = QAction("Stop Service")
 
         self.restart_action = QAction("restart Service")
         self.sync_action = QAction("↻ Sync Now")
+
+        self.menu.addSeparator()
 
         self.quit_action = QAction("Quit Icloud-linux")
         self.menu.addAction(self.status_action)
@@ -77,11 +89,13 @@ class TrayApp:
 
         self.menu.addAction(self.restart_action)
         self.menu.addAction(self.sync_action)
+        self.menu.addAction(self.current_file_action)
+
         self.menu.addSeparator()
 
         self.menu.addAction(self.quit_action)
 
-       
+     
     def set_action_trigger_connections(self):
 
         self.quit_action.triggered.connect(self.app.quit)
@@ -100,7 +114,19 @@ class TrayApp:
 
         self.stop_action.triggered.connect(
             lambda: self.app_service_manager.run_service_command("stop")
-        
         )
-        
 
+        self.tray.activated.connect(self.tray_icon_clicked)
+
+    def tray_icon_clicked(self, reason):
+
+        if reason != QSystemTrayIcon.ActivationReason.Trigger:
+            return
+
+        if self.app_tray_main_panel.isVisible():
+            self.app_tray_main_panel.hide()
+        else:
+            self.app_tray_main_panel.show()
+            self.app_tray_main_panel.raise_()
+            self.app_tray_main_panel.activateWindow()
+    

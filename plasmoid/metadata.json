@@ -1,0 +1,15 @@
+{
+    "KPlugin": {
+        "Id": "org.icloudlinux.plasma",
+        "Name": "iCloud Linux",
+        "Description": "Control and monitor icloud-linux",
+        "Icon": "folder",
+        "Version": "0.1.0",
+        "EnabledByDefault": true
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-NotificationArea": "true",
+    "X-Plasma-NotificationAreaCategory": "SystemServices",
+    "X-Plasma-DBusActivationService": "org.iCloudLinux"
+}

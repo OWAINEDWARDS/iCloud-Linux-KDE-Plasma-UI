@@ -1,0 +1,2 @@
+/usr/lib/qt6/qml/org/icloudlinux/backend/libicloudlinuxplugin.so
+/usr/lib/qt6/qml/org/icloudlinux/backend/qmldir
