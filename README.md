@@ -1,59 +1,41 @@
-# To-Do List
+# iCloud Linux Tray UI
 
-* [x] Basic GUI Tray integration with KDE Plasma.
-* [ ] After meta-data crawl - halt - gui select fodler - update config file - sync only based on selection from root folder.
-* [ ] Documentation of code. 
-* [ ] Update Read-me for UI integration with kde.
-* [ ] Add Ui Image to read-me
-* [ ] Add Uninstall
+A KDE Plasma 6-focused fork of [`icloud-linux`](https://github.com/IsmaeelAkram/icloud-linux) that adds a native Plasma tray interface for controlling and monitoring iCloud Drive on Linux.
 
-#bug
-* [ ] sync pre button click (non manual) doesnt update UI loading bar + says idle. 
+![GUI preview](images/GUI-example.png)
+![GUI preview](images/example2.png)
 
+## Features
 
-# Planned UI Features
-
-* [ ] Recursive folder selection. 
-
-
-## Notes
-Integrated iCloudLinux with KDE plasma using kde plasmoids. 
-
-## GUI preview:
-
-![Screenshot](images/GUI-example.png)
-![Screenshot](images/example2.png)
-
-# Installation - new - UI fork
-
-`icloud-linux` runs the iCloud filesystem as a user-level systemd service and includes an optional KDE Plasma 6 interface for monitoring and controlling sync operations.
-
-The Plasma integration provides:
-
-- iCloud service status
+- Mount iCloud Drive as a local-first FUSE filesystem
+- KDE Plasma 6 tray integration
 - Start / Stop / Restart controls
-- Manual sync
+- Manual **Sync Now**
 - Live sync state
 - Metadata crawl progress
 - Hydration status
-- Current file activity
+- Current-file activity
 - Root-level iCloud folder selection
-- Automatic `sync_paths` configuration
-- System tray integration
+- Automatic `sync_paths` updates from the UI
+- Persistent local cache
+- Apple ID + 2FA authentication
+- User-level systemd services
 
 ---
 
+# Installation
+
 ## Requirements
 
-The core application requires:
+### Core
 
 - Linux
 - Python 3
-- Python virtual environment support
+- Python `venv`
 - FUSE
 - systemd user services
 
-The KDE Plasma interface additionally requires:
+### KDE Plasma UI
 
 - KDE Plasma 6
 - Qt 6
@@ -63,209 +45,11 @@ The KDE Plasma interface additionally requires:
 - C++17 compiler
 - `kpackagetool6`
 
-On CachyOS / Arch-based systems, the Plasma development dependencies used by this project include:
+### CachyOS / Arch Linux
 
 ```bash
 sudo pacman -S --needed base-devel cmake qt6-base qt6-declarative libplasma
 ```
-
-You can verify that the Plasma package tool is available with:
-
-```bash
-command -v kpackagetool6
-```
-
----
-
-## Clone the repository
-
-```bash
-git clone <repository-url>
-cd icloud-linux
-```
-
-Make sure the setup scripts are executable:
-
-```bash
-chmod +x icloudctl setup-user.sh finish-setup.sh
-```
-
----
-
-## Initial setup
-
-Run:
-
-```bash
-./setup-user.sh
-```
-
-This performs the initial user setup, including:
-
-- creating the Python virtual environment
-- installing Python dependencies
-- creating the configuration directories
-- creating the iCloud systemd user service
-- creating the iCloud mount directory
-- enabling `icloud.service`
-
-By default, the iCloud mount is:
-
-```text
-~/iCloud
-```
-
-The configuration is stored under:
-
-```text
-~/.config/icloud-linux/
-```
-
----
-
-## Complete setup
-
-The remaining setup must be performed from a normal desktop terminal so that the user D-Bus session is available.
-
-Run:
-
-```bash
-./finish-setup.sh
-```
-
-The setup process will guide you through:
-
-1. Entering your Apple ID credentials
-2. Completing Apple 2FA authentication
-3. Building and installing the KDE Plasma interface
-4. Starting the iCloud filesystem service
-5. Checking the Plasma backend
-
-During Plasma installation, `sudo` is required to install the native Qt/QML module under:
-
-```text
-/usr/lib/qt6/qml/org/icloudlinux/backend/
-```
-
-The remainder of the installation runs as the current user.
-
----
-
-## KDE Plasma interface
-
-The Plasma integration consists of three components:
-
-```text
-Plasma widget
-    ↓
-C++ Qt/QML BackendBridge
-    ↓
-D-Bus
-    ↓
-Python BackendService
-```
-
-The Plasma widget is installed as:
-
-```text
-org.icloudlinux.plasma
-```
-
-under:
-
-```text
-~/.local/share/plasma/plasmoids/org.icloudlinux.plasma/
-```
-
-The native QML module is installed under:
-
-```text
-/usr/lib/qt6/qml/org/icloudlinux/backend/
-```
-
-The Python UI backend runs as the user service:
-
-```text
-icloud-linux-ui.service
-```
-
-and exposes:
-
-```text
-org.iCloudLinux
-```
-
-on the user's D-Bus session.
-
----
-
-## Add the widget to Plasma
-
-If the iCloud Linux widget does not automatically appear in your panel:
-
-1. Right-click the Plasma panel.
-2. Choose **Add Widgets**.
-3. Search for **iCloud Linux**.
-4. Add it to the panel or System Tray.
-
-Plasma remembers the widget placement between logins.
-
-
-# icloud-linux
-
-Mount iCloud Drive on Linux as a fast local-first FUSE filesystem with persistent caching, selective hydration, and on-demand sync.
-
-## What This Is
-
-`icloud-linux` makes your iCloud Drive show up like a normal folder on Linux.
-
-It is designed to feel much more local than a naive network mount:
-
-- folders and filenames are cached on disk
-- file contents are downloaded into a local mirror on demand or in the background
-- reads usually come from local storage, not from iCloud on every access
-- local changes are written immediately and synced back on the next sync pass
-- remote changes are pulled in by the sync engine on demand or on a timer
-
-In practice, that means `find`, editors, shells, and normal file browsing work against a persistent local cache instead of blocking on iCloud for every operation.
-
-## How It Works
-
-There are three main pieces:
-
-- Metadata crawl: the first run scans your iCloud Drive and builds a local index.
-- Hydration: file contents are downloaded into the local cache — either on demand when a file is opened (lazy mode) or proactively in the background (background mode).
-- Sync engine: local edits upload and remote changes are refreshed either automatically on a timer or on demand via `icloudctl sync`.
-
-Important behavior:
-
-- The mount is local-first.
-- Restarts reuse the existing cache instead of starting from zero.
-- If you open a file before it has finished hydrating, that file is downloaded first and then served locally.
-- Failed warmup downloads are retried automatically with backoff.
-- If a path changed both locally and remotely, the local version is preserved as a conflict copy instead of being silently overwritten.
-- With `auto_sync: false`, the driver starts and mounts immediately without spawning background polling threads. Run `icloudctl sync` when you want a fresh pull from iCloud.
-
-## Who This Is For
-
-This project is for people who want:
-
-- a normal folder they can browse on Linux
-- Apple ID + 2FA support
-- a persistent local cache
-- control over which folders are hydrated vs stub-only
-- on-demand syncing instead of constant background polling
-
-If you want a quick setup and do not care about the internal details, use `./icloudctl quickstart`.
-
-## Requirements
-
-You need:
-
-- Linux
-- Python 3 with `venv`
-- FUSE
-- `systemctl --user`
 
 ### Debian / Ubuntu
 
@@ -274,73 +58,288 @@ sudo apt-get update
 sudo apt-get install -y fuse libfuse-dev pkg-config python3-venv
 ```
 
+The Plasma UI additionally requires Plasma 6 / Qt 6 development packages.
+
 ### Fedora
 
 ```bash
 sudo dnf install python3-devel fuse fuse-libs fuse-devel gcc make
 ```
 
-## Fast Setup
+The Plasma UI additionally requires Plasma 6 / Qt 6 development packages.
+
+---
+
+## 1. Clone the repository
 
 ```bash
-git clone https://github.com/IsmaeelAkram/icloud-linux.git
-cd icloud-linux
-./icloudctl quickstart ~/iCloud
+git clone https://github.com/OWAINEDWARDS/icloud-linux-trayUI.git
+cd icloud-linux-trayUI
 ```
 
-This will:
-
-1. create the Python virtual environment
-2. install dependencies
-3. create the config and user service
-4. ask for your Apple ID email and password
-5. run the one-time interactive authentication flow
-6. start the background service
-
-After setup, your files will be mounted at `~/iCloud` unless you chose another path.
-
-## Simple Setup, Step By Step
-
-If you prefer to do setup one step at a time:
+Make the setup scripts executable:
 
 ```bash
-./icloudctl init ~/iCloud
-./icloudctl configure
-./icloudctl auth
-./icloudctl start
+chmod +x icloudctl setup-user.sh finish-setup.sh
 ```
 
-## Why Authentication Is Split Into Two Steps
+---
 
-Systemd user services are non-interactive. They cannot pause and wait for a 2FA code.
-
-So this project uses:
-
-- `./icloudctl auth` for the interactive one-time Apple login and 2FA flow
-- a generated user service that reuses the saved session cookies in the background
-
-If Apple expires your session, run:
+## 2. Initial setup
 
 ```bash
-./icloudctl auth
-./icloudctl restart
+./setup-user.sh
 ```
 
-### iOS 26 Beta 2FA Workaround
+This:
 
-iOS 26 beta may deliver a push notification popup instead of a numeric 2FA code. If this happens, use the `--force-sms` flag to bypass the push path and request an SMS code directly:
+- creates the Python virtual environment
+- installs Python dependencies
+- creates the configuration directories
+- creates the iCloud systemd user service
+- creates the mount directory
+- enables `icloud.service`
+
+The default mount is:
+
+```text
+~/iCloud
+```
+
+Configuration is stored under:
+
+```text
+~/.config/icloud-linux/
+```
+
+---
+
+## 3. Finish setup
+
+Run this from a normal KDE desktop terminal so the user D-Bus session is available:
 
 ```bash
-./icloudctl auth --force-sms
+./finish-setup.sh
 ```
 
-Use `--debug` to see Apple's reported auth mode and diagnose delivery issues:
+The script guides you through:
+
+1. Apple ID configuration
+2. Apple 2FA authentication
+3. KDE Plasma UI installation
+4. starting the iCloud service
+5. checking the Plasma backend
+
+The native QML plugin is installed to:
+
+```text
+/usr/lib/qt6/qml/org/icloudlinux/backend/
+```
+
+The Plasma widget is installed to:
+
+```text
+~/.local/share/plasma/plasmoids/org.icloudlinux.plasma/
+```
+
+The UI backend runs as:
+
+```text
+icloud-linux-ui.service
+```
+
+---
+
+## 4. Add the Plasma widget
+
+If the widget is not already visible:
+
+1. Right-click the Plasma panel.
+2. Select **Add Widgets**.
+3. Search for **iCloud Linux**.
+4. Add it to the panel or System Tray.
+
+Plasma remembers the widget placement between sessions.
+
+---
+
+# Using the Plasma UI
+
+The tray popup provides:
+
+## Service controls
+
+```text
+Start
+Stop
+Restart
+```
+
+These control `icloud.service`.
+
+## Manual sync
+
+Press:
+
+```text
+Sync Now
+```
+
+The command-line equivalent is:
 
 ```bash
-./icloudctl auth --debug
+./icloudctl sync
 ```
 
-## Everyday Commands
+## Live status
+
+During sync, the UI can display:
+
+```text
+Starting...
+Scanning iCloud... 79 folders scanned
+Hydrating...
+Syncing...
+Idle
+```
+
+When file-level activity is available, the current iCloud path is also shown.
+
+## Folder selection
+
+After iCloud's root metadata has been discovered, the UI lists root-level folders such as:
+
+```text
+Documents
+Downloads
+Obsidian
+Photos
+Work
+```
+
+Select the folders you want and press:
+
+```text
+Save & Apply
+```
+
+The selection is written to:
+
+```text
+~/.config/icloud-linux/config.yaml
+```
+
+Example:
+
+```yaml
+sync_paths:
+  - /Documents
+  - /Obsidian
+  - /Work
+```
+
+Only real root-level iCloud folders are accepted.
+
+At least one folder must remain selected.
+
+If all root folders are selected, the configuration may use:
+
+```yaml
+sync_paths: null
+```
+
+which means all paths are allowed.
+
+---
+
+# How It Works
+
+The Plasma integration uses:
+
+```text
+KDE Plasma QML
+      ↓
+C++ BackendBridge
+      ↓
+D-Bus
+      ↓
+Python BackendService
+      ↓
+icloudctl / systemd / icloud-linux
+```
+
+The backend uses:
+
+```text
+D-Bus service:   org.iCloudLinux
+Object:          /Backend
+Interface:       org.iCloudLinux.Backend
+```
+
+The Python backend is split into:
+
+```text
+BackendService
+├── ServiceManager
+├── SyncManager
+├── LogFeeder
+└── ConfigManager
+```
+
+---
+
+# Sync Behaviour
+
+## Metadata crawl
+
+The service scans iCloud Drive and refreshes the local metadata index.
+
+The UI reports progress such as:
+
+```text
+Scanning iCloud... 79 folders scanned
+```
+
+## Hydration
+
+Hydration downloads file contents into the persistent local mirror.
+
+Depending on configuration, files can hydrate:
+
+- on demand
+- in the background
+- explicitly with `icloudctl hydrate`
+
+## `sync_paths`
+
+`sync_paths` is an allow-list for hydration.
+
+Example:
+
+```yaml
+sync_paths:
+  - /Downloads
+```
+
+## `exclude_paths`
+
+`exclude_paths` is a deny-list and takes priority over `sync_paths`.
+
+Example:
+
+```yaml
+sync_paths:
+  - /Downloads
+
+exclude_paths:
+  - /Downloads/Large Archive
+```
+
+---
+
+# Useful Commands
+
+## Main service
 
 ```bash
 ./icloudctl start
@@ -349,126 +348,208 @@ Use `--debug` to see Apple's reported auth mode and diagnose delivery issues:
 ./icloudctl refresh
 ./icloudctl status
 ./icloudctl logs
-./icloudctl doctor
-./icloudctl hydrate [--dry-run] [--verbose]
-./icloudctl sync [--timeout SECONDS] [--quiet]
+```
+
+## Sync
+
+```bash
+./icloudctl sync
+./icloudctl hydrate
+./icloudctl hydrate --dry-run
 ./icloudctl clear-cache
-./icloudctl uninstall
 ```
 
-What they do:
-
-- `start`: starts the background user service
-- `stop`: stops the service and unmounts the folder
-- `restart`: restarts the service cleanly
-- `refresh`: asks the running service to crawl remote iCloud Drive metadata now
-- `status`: shows whether the service is running
-- `logs`: tails the service logs
-- `doctor`: checks common setup issues
-- `hydrate`: blocks until all eligible files (per `sync_paths` / `exclude_paths`) are fully downloaded locally. Use this before copying files to ensure nothing triggers a mid-copy download. `--dry-run` shows what would be downloaded without actually downloading.
-- `sync`: triggers an on-demand remote metadata sync in the running driver (sends SIGUSR1, waits for completion). Useful when `auto_sync: false` is set.
-- `clear-cache`: deletes the local mirror and sync database, then rebuilds them on next start
-- `uninstall`: removes the generated user service
-
-## What Happens After You Start It
-
-On the first run:
-
-- the service crawls your iCloud Drive metadata
-- it mounts the folder
-- if `warmup_mode: background`, it starts downloading file contents into the local cache
-- if `warmup_mode: lazy`, file contents download only when each file is first opened
-
-On later runs:
-
-- it reuses the cache stored on disk
-- if `auto_sync: true`, it refreshes remote metadata and uploads local changes on a timer
-- if `auto_sync: false`, it mounts immediately with no background polling; run `icloudctl sync` on demand
-
-## Controlling What Gets Hydrated
-
-By default all of iCloud Drive is indexed (stubs created everywhere), but you can restrict which paths have their file contents downloaded.
-
-**`sync_paths`** — allow-list. Only paths in this list will have file contents downloaded. Everything else is stubs only.
-
-**`exclude_paths`** — deny-list. Paths matching these prefixes are never hydrated, even if they fall under a `sync_path`. The deny-list is evaluated first.
-
-Example config:
-
-```yaml
-# Only hydrate /Downloads
-sync_paths:
-  - /Downloads
-
-# But skip this large subfolder for now
-exclude_paths:
-  - /Downloads/Large Archive
-```
-
-With this config:
-- `/Downloads/*` → file contents downloaded
-- `/Downloads/Large Archive/*` → stubs only, no download
-- Everything else on iCloud → stubs only
-
-When you're ready to hydrate an excluded folder, remove it from `exclude_paths` and restart the service.
-
-## Auto-Sync vs On-Demand Sync
-
-**`auto_sync: true`** (default) — background threads poll iCloud on the configured `upload_interval_seconds` and `remote_refresh_interval_seconds` schedules. Good for setups where files change frequently.
-
-**`auto_sync: false`** — no polling threads start. The driver mounts and waits. Use `icloudctl sync` to pull the latest remote changes when you need them. Good for low-churn libraries where constant polling is wasteful and you want predictable resource usage.
-
-When `auto_sync: false`, the recommended workflow is:
+## Plasma UI
 
 ```bash
-icloudctl sync          # pull latest metadata from iCloud
-icloudctl hydrate       # download file contents for all eligible paths
-# now copy from mirror: ~/.cache/icloud-linux/mirror/Downloads/
+./icloudctl install-ui
+./icloudctl ui-status
+./icloudctl ui-logs
 ```
 
-## Copying Files to Another Location
-
-Once files are hydrated, copy from the local mirror rather than from the FUSE mount:
+## Diagnostics
 
 ```bash
-cp -r ~/.cache/icloud-linux/mirror/Downloads/ ~/Desktop/intake/
+./icloudctl doctor
 ```
 
-The mirror is a plain directory on disk — reads are instant, no network involved. Copying from the FUSE mount works too but may trigger downloads for any files not yet hydrated.
+---
 
-## Local Cache And Sync State
+# Logs
 
-The project keeps its local state here:
+## Main service
 
-- Config: `~/.config/icloud-linux/config.yaml`
-- Session cookies: `~/.config/icloud-linux/cookies`
-- Service env: `~/.config/icloud-linux/icloud.env`
-- User service: `~/.config/systemd/user/icloud.service`
-- Local cache root: `~/.cache/icloud-linux`
-- Local mirror: `~/.cache/icloud-linux/mirror`
-- Sync state database: `~/.cache/icloud-linux/state.sqlite3`
-- Logs: `~/.local/state/icloud-linux/icloud.log`
-- On-demand sync marker: `~/.local/state/icloud-linux/sync_done`
+```bash
+./icloudctl logs
+```
 
-## What "Sync Engine" Means Here
+or:
 
-This repo is not just a read-only mount and it is not only a foreground downloader.
+```bash
+journalctl --user -u icloud.service -f
+```
 
-The sync engine:
+## Plasma backend
 
-- tracks local dirty files and directories
-- uploads local changes (when `auto_sync: true` or on `icloudctl sync`)
-- refreshes remote metadata (when `auto_sync: true` or on `icloudctl sync`)
-- hydrates missing file contents on demand or in the background
-- preserves local conflict copies when local and remote diverge
+```bash
+./icloudctl ui-logs
+```
 
-That makes it closer to a real cached sync client than a simple network filesystem wrapper.
+or:
 
-## Troubleshooting
+```bash
+journalctl --user -u icloud-linux-ui.service -f
+```
 
-### The service will not start
+## Raw iCloud log
 
-Run:
+```bash
+tail -f ~/.local/state/icloud-linux/icloud.log
+```
+
+Show only new sync-related events:
+
+```bash
+tail -n 0 -f ~/.local/state/icloud-linux/icloud.log | grep --line-buffered -E "Remote metadata crawl|hydrate-start|hydrate-complete|file-sync-start|download-complete"
+```
+
+---
+
+# Authentication
+
+Authenticate with:
+
+```bash
+./icloudctl auth
+```
+
+If the saved Apple session expires:
+
+```bash
+./icloudctl auth
+./icloudctl restart
+```
+
+For the iOS 26 beta SMS workaround:
+
+```bash
+./icloudctl auth --force-sms
+```
+
+For authentication diagnostics:
+
+```bash
+./icloudctl auth --debug
+```
+
+---
+
+# Local Files and State
+
+```text
+Config:
+~/.config/icloud-linux/config.yaml
+
+Session cookies:
+~/.config/icloud-linux/cookies
+
+Service environment:
+~/.config/icloud-linux/icloud.env
+
+Main service:
+~/.config/systemd/user/icloud.service
+
+UI backend service:
+~/.config/systemd/user/icloud-linux-ui.service
+
+Local cache:
+~/.cache/icloud-linux
+
+Local mirror:
+~/.cache/icloud-linux/mirror
+
+Sync database:
+~/.cache/icloud-linux/state.sqlite3
+
+Application log:
+~/.local/state/icloud-linux/icloud.log
+```
+
+---
+
+# Updating
+
+Pull the latest version:
+
+```bash
+git pull
+```
+
+Update the Plasma integration:
+
+```bash
+./icloudctl install-ui
+```
+
+If Plasma still has an older native plugin loaded:
+
+```bash
+systemctl --user restart plasma-plasmashell.service
+```
+
+---
+
+# Development
+
+The KDE frontend is organised as:
+
+```text
+ui_backend/
+├── backend_service.py
+├── config_manager.py
+├── gui_log_feeder.py
+├── service_manager.py
+└── sync_manager.py
+
+plasma_plugin/
+├── backend_bridge.cpp
+├── backend_bridge.h
+├── icloudlinux_plugin.cpp
+├── icloudlinux_plugin.h
+└── qmldir
+
+plasmoid/
+├── metadata.json
+└── contents/ui/main.qml
+```
+
+## Python backend changes
+
+```bash
+systemctl --user restart icloud-linux-ui.service
+```
+
+## C++ bridge changes
+
+```bash
+cmake --build build
+sudo cmake --install build
+systemctl --user restart plasma-plasmashell.service
+```
+
+## QML-only changes
+
+```bash
+rm -rf ~/.local/share/plasma/plasmoids/org.icloudlinux.plasma
+cp -a plasmoid ~/.local/share/plasma/plasmoids/org.icloudlinux.plasma
+systemctl --user restart plasma-plasmashell.service
+```
+
+---
+
+# Troubleshooting
+
+## Main service
 
 ```bash
 ./icloudctl status
@@ -476,61 +557,98 @@ Run:
 ./icloudctl logs
 ```
 
-### Authentication expired
-
-Run:
+## Plasma backend
 
 ```bash
-./icloudctl auth
-./icloudctl restart
+systemctl --user status icloud-linux-ui.service --no-pager -l
 ```
 
-### Service starts but auth fails silently (unauthenticated mode)
-
-When running under systemd (no TTY), a failed auth parks the service in unauthenticated mode instead of crashing — this prevents the service from crash-looping and triggering Apple's account lockout. You will see `UNAUTHENTICATED mode` in the logs. Fix by running:
+## Check D-Bus
 
 ```bash
-./icloudctl auth
-./icloudctl restart
+busctl --user list | grep iCloudLinux
 ```
 
-### I want to rebuild everything locally
-
-Run:
+Test the backend:
 
 ```bash
-./icloudctl clear-cache
+busctl --user call org.iCloudLinux /Backend org.iCloudLinux.Backend Ping
 ```
 
-That removes the local mirror and sync database. The next start will rebuild them from iCloud.
+Expected:
 
-### I want to confirm it is using the local cache
+```text
+s "pong"
+```
 
-After the service has had time to hydrate files:
+Inspect the interface:
 
 ```bash
-find ~/iCloud -type f | head
+busctl --user introspect org.iCloudLinux /Backend org.iCloudLinux.Backend
 ```
 
-You can watch logs in another terminal:
+The live state signal should be:
+
+```text
+.state_changed   signal   sbss
+```
+
+Watch live signals:
 
 ```bash
-./icloudctl logs
+busctl --user --match="type='signal',path='/Backend',interface='org.iCloudLinux.Backend'" monitor
 ```
 
-Normal activity with `auto_sync: false` will show the reconcile pass at startup and then go quiet until you run `icloudctl sync`.
-
-### I want to check hydration progress
+## Plasma widget fails to load
 
 ```bash
-./icloudctl hydrate --dry-run
+journalctl --user -u plasma-plasmashell.service -f
 ```
 
-This reports how many files are already local vs need downloading, without downloading anything.
+Check the native QML module:
+
+```bash
+ls -l /usr/lib/qt6/qml/org/icloudlinux/backend/
+```
+
+Expected:
+
+```text
+libicloudlinuxplugin.so
+qmldir
+```
+
+---
+
+# To-Do List
+
+* [x] Basic GUI Tray integration with KDE Plasma.
+* [ ] After meta-data crawl - halt - gui select fodler - update config file - sync only based on selection from root folder.
+* [ ] Documentation of code.
+* [ ] Update Read-me for UI integration with kde.
+* [ ] Add Ui Image to read-me
+* [ ] Add Uninstall
+
+## Bugs
+
+* [ ] sync pre button click (non manual) doesnt update UI loading bar + says idle.
+
+## Planned UI Features
+
+* [ ] Recursive folder selection.
 
 ## Notes
 
-- Warmup downloads are intentionally conservative because iCloud file downloads are sensitive to aggressive parallelism.
-- The generated systemd unit is created by `./icloudctl`; the repo does not rely on checked-in service files anymore.
-- This project currently targets a user-level systemd service, not a system-wide root service.
-- When `auto_sync: false`, the SIGUSR1 signal triggers a one-shot sync in the background; `icloudctl sync` handles sending that signal and waiting for completion.
+Integrated iCloudLinux with KDE plasma using kde plasmoids.
+
+---
+
+# Credits
+
+This repository is based on:
+
+[`IsmaeelAkram/icloud-linux`](https://github.com/IsmaeelAkram/icloud-linux)
+
+KDE Plasma integration and the additional frontend/backend work in this fork are maintained at:
+
+[`OWAINEDWARDS/icloud-linux-trayUI`](https://github.com/OWAINEDWARDS/icloud-linux-trayUI)
