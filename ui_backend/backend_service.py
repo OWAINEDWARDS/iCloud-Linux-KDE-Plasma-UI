@@ -21,7 +21,7 @@ INTERFACE_NAME = "org.iCloudLinux.Backend"
 
 @ClassInfo({"D-Bus Interface": INTERFACE_NAME})
 class BackendService(QObject):
-    state_changed = Signal(str, bool, str)
+    state_changed = Signal(str, bool, str, str)
     folders_changed = Signal("QStringList", "QStringList")
     
     def __init__(self):
@@ -151,7 +151,13 @@ class BackendService(QObject):
 
 
     def _service_command_finished(self, operation, success, message):
+
+        self._status = self.service_manager.get_service_status()
+
         print(message)
+        print(f"Service command finished: operation={operation}, success={success}, status={self._status}")
+
+        self._emit_state()
 
     def _current_file_changed(self, current_file):
 
@@ -212,10 +218,10 @@ class BackendService(QObject):
 
     def _emit_state(self):
 
-        self.state_changed.emit(self._status, self._syncing, self._current_file)
+        self.state_changed.emit(self._status, self._syncing, self._current_file, self._sync_phase)
 
-        print(f"State changed: status={self._status}, syncing={self._syncing}, file={self._current_file}")
-        
+        print(f"State changed: status={self._status}, syncing={self._syncing}, file={self._current_file}, phase={self._sync_phase}")
+            
 
 def main():
     app = QCoreApplication(sys.argv)

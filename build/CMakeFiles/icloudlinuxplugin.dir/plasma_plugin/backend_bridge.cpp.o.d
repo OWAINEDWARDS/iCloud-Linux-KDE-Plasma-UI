@@ -285,11 +285,10 @@ CMakeFiles/icloudlinuxplugin.dir/plasma_plugin/backend_bridge.cpp.o: \
  /usr/include/qt6/QtCore/qbindingstorage.h /usr/include/c++/16/chrono \
  /usr/include/c++/16/bits/chrono.h /usr/include/c++/16/ratio \
  /usr/include/c++/16/ctime /usr/include/qt6/QtCore/QString \
- /usr/include/qt6/QtDBus/QDBusConnection \
- /usr/include/qt6/QtDBus/qdbusconnection.h \
- /usr/include/qt6/QtDBus/qtdbusglobal.h \
- /usr/include/qt6/QtCore/qvariant.h /usr/include/qt6/QtCore/qdebug.h \
- /usr/include/qt6/QtCore/qtextstream.h \
+ /usr/include/qt6/QtCore/QStringList /usr/include/qt6/QtCore/QVariantList \
+ /usr/include/qt6/QtCore/qvariantlist.h /usr/include/qt6/QtCore/QList \
+ /usr/include/qt6/QtCore/QVariant /usr/include/qt6/QtCore/qvariant.h \
+ /usr/include/qt6/QtCore/qdebug.h /usr/include/qt6/QtCore/qtextstream.h \
  /usr/include/qt6/QtCore/qcontiguouscache.h /usr/include/c++/16/climits \
  /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/limits.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/16/include/syslimits.h \
@@ -308,6 +307,9 @@ CMakeFiles/icloudlinuxplugin.dir/plasma_plugin/backend_bridge.cpp.o: \
  /usr/include/qt6/QtCore/qvarlengtharray.h \
  /usr/include/qt6/QtCore/qalloc.h /usr/include/qt6/QtCore/q23utility.h \
  /usr/include/qt6/QtCore/q20utility.h \
+ /usr/include/qt6/QtDBus/QDBusConnection \
+ /usr/include/qt6/QtDBus/qdbusconnection.h \
+ /usr/include/qt6/QtDBus/qtdbusglobal.h \
  /usr/include/qt6/QtDBus/qtdbusexports.h \
  /usr/include/qt6/QtDBus/QDBusMessage \
  /usr/include/qt6/QtDBus/qdbusmessage.h \

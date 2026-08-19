@@ -16,27 +16,19 @@ namespace{
 BackendBridge::BackendBridge(QObject *parent) : QObject(parent){
     QDBusConnection bus = QDBusConnection::sessionBus();
 
+    bool state_connected = bus.connect(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("state_changed"), QStringLiteral("sbss"), this, SLOT(onStateChanged(QString,bool,QString,QString)));
+
+    if (!state_connected){
+        qWarning() << "Could not connect to state_changed D-Bus signal";
+    }
+
     bool folders_connected = bus.connect(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("folders_changed"), QStringLiteral("asas"), this, SLOT(onFoldersChanged(QStringList,QStringList)));
 
     if (!folders_connected){
         qWarning() << "Could not connect to folders_changed D-Bus signal";
     }
+
     refresh();
-}
-
-QStringList BackendBridge::rootFolders() const{
-
-    return m_rootFolders;
-}
-
-QStringList BackendBridge::syncFolders() const{
-
-    return m_syncFolders;
-}
-
-QString BackendBridge::folderMessage() const{
-
-    return m_folderMessage;
 }
 
 QString BackendBridge::status() const{
@@ -51,17 +43,36 @@ QString BackendBridge::currentFile() const{
     return m_currentFile;
 }
 
+QString BackendBridge::syncPhase() const{
+    return m_syncPhase;
+}
+
+QStringList BackendBridge::rootFolders() const{
+    return m_rootFolders;
+}
+
+QStringList BackendBridge::syncFolders() const{
+    return m_syncFolders;
+}
+
+QString BackendBridge::folderMessage() const{
+    return m_folderMessage;
+}
+
 void BackendBridge::refresh(){
     requestStatus();
     requestSyncing();
     requestCurrentFile();
+    requestSyncPhase();
+
     refreshFolders();
 }
-void BackendBridge::refreshFolders(){
 
+void BackendBridge::refreshFolders(){
     requestRootFolders();
     requestSyncFolders();
 }
+
 
 void BackendBridge::startService(){
     callMethod(QStringLiteral("Start"));
@@ -79,129 +90,31 @@ void BackendBridge::sync(){
     callMethod(QStringLiteral("Sync"));
 }
 
-void BackendBridge::requestRootFolders(){
+void BackendBridge::onStateChanged(const QString &status, bool syncing, const QString &currentFile, const QString &syncPhase){
+    bool changed = m_status != status || m_syncing != syncing || m_currentFile != currentFile || m_syncPhase != syncPhase;
 
-    QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("GetRootFolders"));
+    m_status = status;
+    m_syncing = syncing;
+    m_currentFile = currentFile;
+    m_syncPhase = syncPhase;
 
-    QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
-
-    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
-
-    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
-
-        QDBusPendingReply<QStringList> reply = *call;
-
-        if (reply.isError()){
-            qWarning() << "GetRootFolders D-Bus call failed:" << reply.error().message();
-
-            call->deleteLater();
-
-            return;
-        }
-
-        m_rootFolders = reply.value();
-
-        emit foldersChanged();
-
-        call->deleteLater();
-    });
-}
-
-void BackendBridge::requestSyncFolders(){
-
-    QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("GetSyncPaths"));
-
-    QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
-
-    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
-
-    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
-
-        QDBusPendingReply<QStringList> reply = *call;
-
-        if (reply.isError()){
-            qWarning() << "GetSyncPaths D-Bus call failed:" << reply.error().message();
-
-            call->deleteLater();
-
-            return;
-        }
-
-        m_syncFolders = reply.value();
-
-        emit foldersChanged();
-
-        call->deleteLater();
-    });
+    if (changed){
+        emit stateChanged();
+    }
 }
 
 void BackendBridge::onFoldersChanged(const QStringList &rootFolders, const QStringList &syncFolders){
-
     m_rootFolders = rootFolders;
     m_syncFolders = syncFolders;
 
     emit foldersChanged();
 }
 
-void BackendBridge::saveSyncFolders(const QVariantList &folders){
-
-    QStringList folder_names;
-
-    for (const QVariant &folder : folders){
-        folder_names.append(folder.toString());
-    }
-
-    QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("SetSyncPaths"));
-
-    message << folder_names;
-
-    QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
-    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
-    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
-
-        QDBusPendingReply<QString> reply = *call;
-
-        if (reply.isError()){
-            m_folderMessage = "ERROR: " + reply.error().message();
-
-            emit folderMessageChanged();
-            call->deleteLater();
-
-            return;
-        }
-
-        m_folderMessage = reply.value();
-
-        emit folderMessageChanged();
-
-        refreshFolders();
-
-        call->deleteLater();
-    });
-}
-
-void BackendBridge::onStateChanged(const QString &status, bool syncing, const QString &currentFile){
-    bool changed = m_status != status || m_syncing != syncing || m_currentFile != currentFile;
-
-    m_status = status;
-
-    m_syncing = syncing;
-
-    m_currentFile = currentFile;
-
-    if (changed)
-    {
-        emit stateChanged();
-    }
-}
-
 void BackendBridge::requestStatus(){
+
     QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("GetStatus"));
-
     QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
-
     QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
-
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
         QDBusPendingReply<QString> reply = *call;
 
@@ -209,7 +122,6 @@ void BackendBridge::requestStatus(){
             qWarning() << "GetStatus D-Bus call failed:" << reply.error().message();
 
             call->deleteLater();
-
             return;
         }
 
@@ -225,12 +137,10 @@ void BackendBridge::requestStatus(){
     });
 }
 
-
 void BackendBridge::requestSyncing(){
+
     QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("IsSyncing"));
-
     QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
-
     QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
 
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
@@ -240,7 +150,6 @@ void BackendBridge::requestSyncing(){
             qWarning() << "IsSyncing D-Bus call failed:" << reply.error().message();
 
             call->deleteLater();
-
             return;
         }
 
@@ -257,20 +166,18 @@ void BackendBridge::requestSyncing(){
 }
 
 void BackendBridge::requestCurrentFile(){
+
     QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("GetCurrentFile"));
-
     QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
-
     QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
 
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
         QDBusPendingReply<QString> reply = *call;
 
         if (reply.isError()){
+
             qWarning() << "GetCurrentFile D-Bus call failed:" << reply.error().message();
-
             call->deleteLater();
-
             return;
         }
 
@@ -281,6 +188,116 @@ void BackendBridge::requestCurrentFile(){
 
             emit stateChanged();
         }
+
+        call->deleteLater();
+    });
+}
+
+void BackendBridge::requestSyncPhase(){
+
+    QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("GetSyncPhase"));
+    QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
+    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
+
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
+        QDBusPendingReply<QString> reply = *call;
+
+        if (reply.isError()){
+
+            qWarning() << "GetSyncPhase D-Bus call failed:" << reply.error().message();
+            call->deleteLater();
+
+            return;
+        }
+
+        QString new_sync_phase = reply.value();
+
+        if (m_syncPhase != new_sync_phase){
+            m_syncPhase = new_sync_phase;
+
+            emit stateChanged();
+        }
+
+        call->deleteLater();
+    });
+}
+
+void BackendBridge::requestRootFolders(){
+
+    QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("GetRootFolders"));
+    QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
+    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
+
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
+        QDBusPendingReply<QStringList> reply = *call;
+
+        if (reply.isError()){
+            qWarning() << "GetRootFolders D-Bus call failed:" << reply.error().message();
+
+            call->deleteLater();
+
+            return;
+        }
+
+        m_rootFolders = reply.value();
+        emit foldersChanged();
+        call->deleteLater();
+    });
+}
+
+void BackendBridge::requestSyncFolders(){
+    QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("GetSyncPaths"));
+
+    QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
+
+    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
+
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
+        QDBusPendingReply<QStringList> reply = *call;
+
+        if (reply.isError()){
+            qWarning() << "GetSyncPaths D-Bus call failed:" << reply.error().message();
+
+            call->deleteLater();
+
+            return;
+        }
+
+        m_syncFolders = reply.value();
+        emit foldersChanged();
+        call->deleteLater();
+    });
+}
+
+
+void BackendBridge::saveSyncFolders(const QVariantList &folders){
+    QStringList folder_names;
+
+    for (const QVariant &folder : folders){
+        folder_names.append(folder.toString());
+    }
+
+    QDBusMessage message = QDBusMessage::createMethodCall(SERVICE_NAME, OBJECT_PATH, INTERFACE_NAME, QStringLiteral("SetSyncPaths"));
+    message << folder_names;
+    QDBusPendingCall pending_call = QDBusConnection::sessionBus().asyncCall(message);
+    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(pending_call, this);
+
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *call){
+        QDBusPendingReply<QString> reply = *call;
+
+        if (reply.isError()){
+            m_folderMessage = "ERROR: " + reply.error().message();
+
+            emit folderMessageChanged();
+            call->deleteLater();
+
+            return;
+        }
+
+        m_folderMessage = reply.value();
+
+        emit folderMessageChanged();
+        refreshFolders();
 
         call->deleteLater();
     });

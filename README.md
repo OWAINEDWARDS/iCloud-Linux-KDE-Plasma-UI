@@ -5,6 +5,11 @@
 * [ ] Documentation of code. 
 * [ ] Update Read-me for UI integration with kde.
 * [ ] Add Ui Image to read-me
+* [ ] Add Uninstall
+
+#bug
+* [ ] sync pre button click (non manual) doesnt update UI loading bar + says idle. 
+
 
 # PLanned UI Features
 
@@ -13,6 +18,197 @@
 
 ## Notes
 Integrated iCloudLinux with KDE plasma using kde plasmoids. 
+
+## GUI preview:
+
+![Screenshot](images/GUI-example.png)
+
+# Installation - new - UI fork
+
+`icloud-linux` runs the iCloud filesystem as a user-level systemd service and includes an optional KDE Plasma 6 interface for monitoring and controlling sync operations.
+
+The Plasma integration provides:
+
+- iCloud service status
+- Start / Stop / Restart controls
+- Manual sync
+- Live sync state
+- Metadata crawl progress
+- Hydration status
+- Current file activity
+- Root-level iCloud folder selection
+- Automatic `sync_paths` configuration
+- System tray integration
+
+---
+
+## Requirements
+
+The core application requires:
+
+- Linux
+- Python 3
+- Python virtual environment support
+- FUSE
+- systemd user services
+
+The KDE Plasma interface additionally requires:
+
+- KDE Plasma 6
+- Qt 6
+- Qt 6 QML
+- Qt 6 D-Bus
+- CMake
+- C++17 compiler
+- `kpackagetool6`
+
+On CachyOS / Arch-based systems, the Plasma development dependencies used by this project include:
+
+```bash
+sudo pacman -S --needed base-devel cmake qt6-base qt6-declarative libplasma
+```
+
+You can verify that the Plasma package tool is available with:
+
+```bash
+command -v kpackagetool6
+```
+
+---
+
+## Clone the repository
+
+```bash
+git clone <repository-url>
+cd icloud-linux
+```
+
+Make sure the setup scripts are executable:
+
+```bash
+chmod +x icloudctl setup-user.sh finish-setup.sh
+```
+
+---
+
+## Initial setup
+
+Run:
+
+```bash
+./setup-user.sh
+```
+
+This performs the initial user setup, including:
+
+- creating the Python virtual environment
+- installing Python dependencies
+- creating the configuration directories
+- creating the iCloud systemd user service
+- creating the iCloud mount directory
+- enabling `icloud.service`
+
+By default, the iCloud mount is:
+
+```text
+~/iCloud
+```
+
+The configuration is stored under:
+
+```text
+~/.config/icloud-linux/
+```
+
+---
+
+## Complete setup
+
+The remaining setup must be performed from a normal desktop terminal so that the user D-Bus session is available.
+
+Run:
+
+```bash
+./finish-setup.sh
+```
+
+The setup process will guide you through:
+
+1. Entering your Apple ID credentials
+2. Completing Apple 2FA authentication
+3. Building and installing the KDE Plasma interface
+4. Starting the iCloud filesystem service
+5. Checking the Plasma backend
+
+During Plasma installation, `sudo` is required to install the native Qt/QML module under:
+
+```text
+/usr/lib/qt6/qml/org/icloudlinux/backend/
+```
+
+The remainder of the installation runs as the current user.
+
+---
+
+## KDE Plasma interface
+
+The Plasma integration consists of three components:
+
+```text
+Plasma widget
+    ↓
+C++ Qt/QML BackendBridge
+    ↓
+D-Bus
+    ↓
+Python BackendService
+```
+
+The Plasma widget is installed as:
+
+```text
+org.icloudlinux.plasma
+```
+
+under:
+
+```text
+~/.local/share/plasma/plasmoids/org.icloudlinux.plasma/
+```
+
+The native QML module is installed under:
+
+```text
+/usr/lib/qt6/qml/org/icloudlinux/backend/
+```
+
+The Python UI backend runs as the user service:
+
+```text
+icloud-linux-ui.service
+```
+
+and exposes:
+
+```text
+org.iCloudLinux
+```
+
+on the user's D-Bus session.
+
+---
+
+## Add the widget to Plasma
+
+If the iCloud Linux widget does not automatically appear in your panel:
+
+1. Right-click the Plasma panel.
+2. Choose **Add Widgets**.
+3. Search for **iCloud Linux**.
+4. Add it to the panel or System Tray.
+
+Plasma remembers the widget placement between logins.
+
 
 # icloud-linux
 

@@ -328,9 +328,11 @@ CMakeFiles/icloudlinuxplugin.dir/plasma_plugin/icloudlinux_plugin.cpp.o: \
  /usr/include/qt6/QtQml/qtqmlexports.h \
  /home/gngrora/Documents/Dev/icloud-linux-trayUI/plasma_plugin/backend_bridge.h \
  /usr/include/qt6/QtCore/QObject /usr/include/qt6/QtCore/QString \
- /usr/include/qt6/QtQml/QQmlEngine /usr/include/qt6/QtQml/qqmlengine.h \
- /usr/include/qt6/QtQml/qjsengine.h /usr/include/qt6/QtCore/qtimezone.h \
- /usr/include/qt6/QtQml/qjsvalue.h \
+ /usr/include/qt6/QtCore/QStringList /usr/include/qt6/QtCore/QVariantList \
+ /usr/include/qt6/QtCore/qvariantlist.h /usr/include/qt6/QtCore/QList \
+ /usr/include/qt6/QtCore/QVariant /usr/include/qt6/QtQml/QQmlEngine \
+ /usr/include/qt6/QtQml/qqmlengine.h /usr/include/qt6/QtQml/qjsengine.h \
+ /usr/include/qt6/QtCore/qtimezone.h /usr/include/qt6/QtQml/qjsvalue.h \
  /usr/include/qt6/QtQml/qjsmanagedvalue.h \
  /usr/include/qt6/QtQml/qjsprimitivevalue.h \
  /usr/include/qt6/QtQml/qjsnumbercoercion.h \
