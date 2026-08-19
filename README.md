@@ -11,7 +11,7 @@
 * [ ] sync pre button click (non manual) doesnt update UI loading bar + says idle. 
 
 
-# PLanned UI Features
+# Planned UI Features
 
 * [ ] Recursive folder selection. 
 
