@@ -2,8 +2,8 @@
 
 A KDE Plasma 6-focused fork of [`icloud-linux`](https://github.com/IsmaeelAkram/icloud-linux) that adds a native Plasma tray interface for controlling and monitoring iCloud Drive on Linux.
 
-![GUI preview](images/GUI-example.png)
 ![GUI preview](images/example2.png)
+![GUI preview](images/GUI-example.png)
 
 ## Features
 
