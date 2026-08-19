@@ -22,6 +22,7 @@ Integrated iCloudLinux with KDE plasma using kde plasmoids.
 ## GUI preview:
 
 ![Screenshot](images/GUI-example.png)
+![Screenshot](images/example2.png)
 
 # Installation - new - UI fork
 
