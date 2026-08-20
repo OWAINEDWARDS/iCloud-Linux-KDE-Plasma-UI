@@ -1,4 +1,32 @@
-# Created by venv; see https://docs.python.org/3/library/venv.html
+# Python virtual environments
+.venv/
+venv/
+
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*.bak
+
+# Sample/test files
 sample-*.py
 samples/
-__pycache__/*.bak
+
+# CMake build output
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Compiled files
+*.so
+*.a
+*.o
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

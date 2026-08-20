@@ -1,9 +1,0 @@
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/icloudlinuxplugin.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/edit_cache.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/rebuild_cache.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/list_install_components.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/install.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/install/local.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/install/strip.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/icloudlinuxplugin_autogen_timestamp_deps.dir
-/home/gngrora/Documents/Dev/icloud-linux-trayUI/build/CMakeFiles/icloudlinuxplugin_autogen.dir
