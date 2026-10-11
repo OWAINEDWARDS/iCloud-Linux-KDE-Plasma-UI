@@ -3,3 +3,4 @@ pyyaml
 pyicloud>=2.6.4
 jsonpickle
 PySide6
+rich

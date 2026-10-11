@@ -20,12 +20,17 @@ iOS 26 beta workaround:
   This PUTs directly to /appleauth/auth/verify/phone with mode=sms, bypassing
   the push/trusted-device bridge that iOS 26 beta fails to complete.
 """
+import logging
 import os
 import sys
 import yaml
 import requests
 from pyicloud import PyiCloudService
-from pyicloud.exceptions import PyiCloud2FARequiredException
+from pyicloud.exceptions import (
+    PyiCloud2FARequiredException,
+    PyiCloudAPIResponseException,
+)
+from pyicloud.hsa2_bridge import parse_boot_args_html
 
 
 def load_config(path):
@@ -43,6 +48,34 @@ def get_partition():
     })
     r = s.post("https://setup.icloud.com/setup/ws/1/validate", json={})
     return r.headers.get("x-apple-user-partition")
+
+
+def patch_mfa_auth_options(api):
+    """Work around pyicloud 2.7.0 failing on Apple's HTTP 409 auth shell.
+
+    Apple answers GET /appleauth/auth (Accept: text/html) with 409 and the HSA2
+    boot page in the body.  pyicloud's session treats every 409 as an error, so
+    _get_mfa_auth_options() raises "Authentication required for Account. (409)"
+    before it can parse the page.  Here the 409 body is parsed the same way
+    pyicloud would have parsed a 200 response.
+    """
+    original = api._get_mfa_auth_options
+
+    def _get_mfa_auth_options():
+        try:
+            return original()
+        except PyiCloudAPIResponseException as exc:
+            response = exc.response
+            if exc.code != 409 or response is None or not response.text:
+                raise
+            boot_context = parse_boot_args_html(response.text)
+            auth_options = dict(boot_context.as_auth_data())
+            api._hsa2_boot_context = boot_context
+            api._clear_trusted_device_bridge_state()
+            api._set_two_factor_delivery_state("unknown")
+            return auth_options
+
+    api._get_mfa_auth_options = _get_mfa_auth_options
 
 
 def print_auth_diagnostics(api):
@@ -123,7 +156,10 @@ def do_2fa(api):
 
     code = input("\nEnter 2FA code: ").strip()
     if not api.validate_2fa_code(code):
-        print("Invalid 2FA code.", file=sys.stderr)
+        # validate_2fa_code() is False both for a wrong code and when the code
+        # was accepted but the follow-up session trust/login failed.
+        print("2FA step failed: wrong code, or code accepted but session trust "
+              "failed (re-run with --debug to see which).", file=sys.stderr)
         sys.exit(1)
     if not api.is_trusted_session:
         print("Trusting session...")
@@ -143,6 +179,11 @@ def main():
         if idx + 1 < len(args):
             trust_token = args[idx + 1]
     debug = "--debug" in args
+    no_partition = "--no-partition" in args
+    if debug:
+        # pyicloud logs request/trust failures that otherwise return a bare False
+        logging.basicConfig(stream=sys.stderr, format="%(levelname)s %(name)s: %(message)s")
+        logging.getLogger("pyicloud").setLevel(logging.DEBUG)
 
     cfg = load_config(config_path)
     username = cfg.get("username")
@@ -156,14 +197,19 @@ def main():
         print("Missing username/password in config.", file=sys.stderr)
         sys.exit(1)
 
-    print("Detecting Apple account partition...")
-    partition = get_partition()
+    if no_partition:
+        print("Skipping partition detection (--no-partition); using default endpoint.")
+        partition = None
+    else:
+        print("Detecting Apple account partition...")
+        partition = get_partition()
     if partition:
         endpoint = f"https://p{partition}-setup.icloud.com/setup/ws/1"
         print(f"Partition {partition} → {endpoint}")
     else:
         endpoint = None
-        print("Using default endpoint.")
+        if not no_partition:
+            print("Using default endpoint.")
 
     api = PyiCloudService(
         username, password,
@@ -172,6 +218,7 @@ def main():
     )
     if endpoint:
         api._setup_endpoint = endpoint
+    patch_mfa_auth_options(api)
 
     if trust_token:
         # Browser trust-token mode: inject token and authenticate directly
